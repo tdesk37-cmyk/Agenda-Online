@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#A3215F">
+  <title>Agendar horário | Unhas de Gel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=Gloock&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="pagina">
+  <header class="hero">
+    <div class="hero-texto">
+      <h1 id="nome-salao">Unhas de Gel</h1>
+      <p class="lead">Escolha o serviço, veja no calendário os dias com horário livre e confirme em poucos toques.</p>
+      <p class="funcionamento" id="funcionamento"></p>
+    </div>
+    <div class="leque" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+  </header>
+
+  <div id="carregando" class="aviso">Carregando a agenda…</div>
+
+  <div class="layout" id="fluxo" hidden>
+    <div>
+      <section class="passo" id="p1">
+        <h2><span class="n">1</span>Escolha o serviço</h2>
+        <div class="servicos" id="servicos"></div>
+      </section>
+
+      <section class="passo" id="p2">
+        <h2><span class="n">2</span>Escolha o dia</h2>
+        <div class="calendario" id="calendario">
+          <div class="cal-topo">
+            <button type="button" class="cal-nav" id="mes-ant" aria-label="Mês anterior">‹</button>
+            <strong id="mes-titulo" aria-live="polite"></strong>
+            <button type="button" class="cal-nav" id="mes-prox" aria-label="Próximo mês">›</button>
+          </div>
+          <div class="cal-grade" id="cal-grade"></div>
+          <div class="cal-legenda" aria-hidden="true">
+            <span><span class="pontos"><i></i><i></i><i></i></span>Vários horários</span>
+            <span><span class="pontos"><i></i></span>Últimos horários</span>
+            <span><s>12</s>Lotado</span>
+          </div>
+          <p class="cal-dica" id="cal-dica">Escolha um serviço para ver quantos horários livres cada dia tem.</p>
+        </div>
+      </section>
+
+      <section class="passo" id="p3" aria-disabled="true">
+        <h2><span class="n">3</span>Escolha o horário</h2>
+        <div id="horarios"><p class="vazio">Escolha um dia no calendário.</p></div>
+      </section>
+    </div>
+
+    <aside class="resumo-card" id="resumo-card">
+      <h2>Seu agendamento</h2>
+      <dl class="resumo-lista">
+        <div><dt>Serviço</dt><dd id="r-servico">—</dd></div>
+        <div><dt>Dia</dt><dd id="r-dia">—</dd></div>
+        <div><dt>Horário</dt><dd id="r-hora">—</dd></div>
+        <div><dt>Duração</dt><dd id="r-duracao">—</dd></div>
+      </dl>
+      <div class="total"><span>Valor</span><strong id="r-valor">—</strong></div>
+
+      <p class="dica-dados" id="dica-dados">Escolha o serviço, o dia e o horário para preencher seus dados.</p>
+
+      <form id="form" novalidate>
+        <fieldset id="dados" disabled>
+          <label for="nome">Nome</label>
+          <input id="nome" autocomplete="name" maxlength="80" required>
+          <label for="tel">WhatsApp</label>
+          <input id="tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="(19) 99999-9999" required>
+          <label for="obs">Observação (opcional)</label>
+          <textarea id="obs" rows="2" maxlength="300" placeholder="Cor, formato, alguma alergia…"></textarea>
+          <button class="btn" id="confirmar" type="submit">Confirmar agendamento</button>
+        </fieldset>
+        <div id="msg" class="aviso erro" role="alert"></div>
+      </form>
+    </aside>
+  </div>
+
+  <section class="sucesso" id="sucesso" hidden>
+    <div class="cartela" aria-hidden="true"><span style="background:#E7C6B1"></span><span style="background:#E9A1BE"></span><span style="background:#A3215F"></span><span style="background:#5B1A45"></span></div>
+    <h2 style="margin-top:16px">Horário agendado</h2>
+    <p class="lead" id="s-saudacao"></p>
+    <dl class="resumo-lista" style="margin-top:16px">
+      <div><dt>Serviço</dt><dd id="s-servico"></dd></div>
+      <div><dt>Dia</dt><dd id="s-dia"></dd></div>
+      <div><dt>Horário</dt><dd id="s-hora"></dd></div>
+    </dl>
+    <div class="total"><span>Valor</span><strong id="s-valor"></strong></div>
+    <a class="btn" id="zap" target="_blank" rel="noopener">Avisar o salão pelo WhatsApp</a>
+    <a class="btn sec" id="gagenda" target="_blank" rel="noopener">Salvar no Google Agenda</a>
+    <button class="btn sec" type="button" onclick="location.reload()">Fazer outro agendamento</button>
+  </section>
+
+  <footer class="rodape" id="rodape"></footer>
+</div>
+
+<div class="barra-movel" id="barra-movel" hidden>
+  <div><strong id="bm-valor"></strong><span id="bm-info"></span></div>
+  <button type="button" class="btn" id="bm-continuar">Continuar</button>
+</div>
+
+<script src="config.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const estado = { servico: null, data: null, hora: null };
+let cfg, limite, mesVisivel, disp = null, tokenDisp = 0, tokenHor = 0;
+const NOMES_DIA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+
+const servicoAtual = () => cfg.servicos.find(s => s.id === estado.servico);
+const diaAberto = iso => iso >= cfg.hoje && iso <= limite
+  && cfg.diasFuncionamento.includes(parseISO(iso).getDay()) && !cfg.folgas.includes(iso);
+const horaCurta = h => { const [a, b] = h.split(':'); return Number(a) + 'h' + (b !== '00' ? b : ''); };
+function rolarPara(el) {
+  el.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+}
+
+/* ---------- Início ---------- */
+async function iniciar() {
+  $('#nome-salao').textContent = AGENDA_CONFIG.NOME_SALAO;
+  document.title = 'Agendar horário | ' + AGENDA_CONFIG.NOME_SALAO;
+  renderRodape();
+  if (!apiConfigurada()) return falha('A agenda ainda não foi configurada: preencha API_URL no arquivo config.js.');
+  try {
+    cfg = (await apiGet({ acao: 'config' })).config;
+  } catch (e) {
+    return falha('Não foi possível carregar a agenda. Atualize a página ou chame o salão no WhatsApp.');
+  }
+  limite = somarDias(cfg.hoje, cfg.diasAntecedencia);
+  const h = parseISO(cfg.hoje);
+  mesVisivel = new Date(h.getFullYear(), h.getMonth(), 1);
+  $('#funcionamento').textContent = textoFuncionamento();
+  renderServicos();
+  renderCalendario();
+  $('#carregando').hidden = true;
+  $('#fluxo').hidden = false;
+}
+function falha(txt) { $('#carregando').className = 'aviso erro'; $('#carregando').textContent = txt; }
+
+function textoFuncionamento() {
+  const d = [...cfg.diasFuncionamento].sort();
+  const seguidos = d.every((v, i) => i === 0 || v === d[i - 1] + 1);
+  const dias = seguidos && d.length > 2 ? NOMES_DIA[d[0]] + ' a ' + NOMES_DIA[d[d.length - 1]] : d.map(i => NOMES_DIA[i]).join(', ');
+  return capital(dias) + ', das ' + horaCurta(cfg.abertura) + ' às ' + horaCurta(cfg.fechamento);
+}
+
+function renderRodape() {
+  const partes = [];
+  if (AGENDA_CONFIG.ENDERECO) partes.push(`<span>${esc(AGENDA_CONFIG.ENDERECO)}</span>`);
+  if (AGENDA_CONFIG.INSTAGRAM) partes.push(`<a href="https://instagram.com/${encodeURIComponent(AGENDA_CONFIG.INSTAGRAM)}" target="_blank" rel="noopener">@${esc(AGENDA_CONFIG.INSTAGRAM)}</a>`);
+  if (AGENDA_CONFIG.WHATSAPP) partes.push(`<a href="https://wa.me/${AGENDA_CONFIG.WHATSAPP}" target="_blank" rel="noopener">Falar no WhatsApp</a>`);
+  $('#rodape').innerHTML = partes.join('');
+}
+
+/* ---------- 1. Serviços ---------- */
+function renderServicos() {
+  $('#servicos').innerHTML = cfg.servicos.map(s => `
+    <button type="button" class="servico" aria-pressed="false" data-id="${esc(s.id)}">
+      <span class="s-nome">${esc(s.nome)}</span>
+      ${s.descricao ? `<span class="s-desc">${esc(s.descricao)}</span>` : ''}
+      <span class="s-rodape"><span class="s-dur">${duracaoTxt(s.duracao)}</span><span class="s-preco">${esc(precoTxt(s.preco))}</span></span>
+    </button>`).join('');
+}
+$('#servicos').onclick = e => {
+  const b = e.target.closest('.servico');
+  if (!b || b.dataset.id === estado.servico) return;
+  document.querySelectorAll('.servico').forEach(x => x.setAttribute('aria-pressed', x === b));
+  estado.servico = b.dataset.id;
+  estado.hora = null;
+  atualizarResumo();
+  carregarDisponibilidade();
+};
+
+/* ---------- 2. Calendário ---------- */
+async function carregarDisponibilidade() {
+  const t = ++tokenDisp;
+  $('#calendario').classList.add('carregando');
+  $('#cal-dica').textContent = 'Buscando os horários livres…';
+  try {
+    const { dias } = await apiGet({ acao: 'disponibilidade', servico: estado.servico });
+    if (t !== tokenDisp) return;
+    disp = dias;
+    $('#cal-dica').textContent = 'Os pontinhos mostram quantos horários ainda estão livres em cada dia.';
+    if (estado.data && !disp[estado.data]) estado.data = null;
+  } catch (e) {
+    if (t !== tokenDisp) return;
+    disp = null;
+    $('#cal-dica').textContent = 'Não foi possível contar os horários livres agora, mas você pode tocar em um dia.';
+  }
+  $('#calendario').classList.remove('carregando');
+  renderCalendario();
+  carregarHorarios();
+}
+
+function renderCalendario() {
+  const ano = mesVisivel.getFullYear(), mes = mesVisivel.getMonth();
+  const h = parseISO(cfg.hoje), l = parseISO(limite);
+  $('#mes-titulo').textContent = capital(mesVisivel.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }));
+  $('#mes-ant').disabled = ano < h.getFullYear() || (ano === h.getFullYear() && mes <= h.getMonth());
+  $('#mes-prox').disabled = ano > l.getFullYear() || (ano === l.getFullYear() && mes >= l.getMonth());
+
+  let html = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map(d => `<span class="cal-dow" aria-hidden="true">${d}</span>`).join('');
+  const vazios = new Date(ano, mes, 1).getDay();
+  const total = new Date(ano, mes + 1, 0).getDate();
+  for (let i = 0; i < vazios; i++) html += '<span></span>';
+  for (let d = 1; d <= total; d++) {
+    const iso = paraISO(new Date(ano, mes, d));
+    const livres = disp ? (disp[iso] || 0) : null;
+    let cls = 'cal-dia', rotulo = capital(dataLonga(iso)), pontos = '', bloq = false;
+    if (!diaAberto(iso)) { cls += ' fechado'; rotulo += ', fechado'; bloq = true; }
+    else if (livres === 0) { cls += ' lotado'; rotulo += ', lotado'; bloq = true; }
+    else if (livres !== null) {
+      pontos = '<i></i>'.repeat(livres >= 6 ? 3 : livres >= 3 ? 2 : 1);
+      rotulo += `, ${livres} ${livres > 1 ? 'horários livres' : 'horário livre'}`;
+    }
+    if (iso === cfg.hoje) cls += ' hoje';
+    html += `<button type="button" class="${cls}" data-iso="${iso}" aria-pressed="${iso === estado.data}"
+      aria-label="${rotulo}" ${bloq ? 'disabled' : ''}><span>${d}</span><span class="pontos">${pontos}</span></button>`;
+  }
+  $('#cal-grade').innerHTML = html;
+}
+
+$('#cal-grade').onclick = e => {
+  const b = e.target.closest('.cal-dia');
+  if (!b || b.disabled) return;
+  estado.data = b.dataset.iso;
+  document.querySelectorAll('.cal-dia').forEach(x => x.setAttribute('aria-pressed', x === b));
+  carregarHorarios();
+  if (estado.servico && innerWidth <= 900) rolarPara($('#p3'));
+};
+$('#mes-ant').onclick = () => { mesVisivel = new Date(mesVisivel.getFullYear(), mesVisivel.getMonth() - 1, 1); renderCalendario(); };
+$('#mes-prox').onclick = () => { mesVisivel = new Date(mesVisivel.getFullYear(), mesVisivel.getMonth() + 1, 1); renderCalendario(); };
+
+/* ---------- 3. Horários ---------- */
+async function carregarHorarios() {
+  estado.hora = null;
+  atualizarResumo();
+  const alvo = $('#horarios');
+  if (!estado.data) { $('#p3').setAttribute('aria-disabled', 'true'); alvo.innerHTML = '<p class="vazio">Escolha um dia no calendário.</p>'; return; }
+  if (!estado.servico) { alvo.innerHTML = '<p class="vazio">Escolha um serviço para ver os horários desse dia.</p>'; return; }
+  $('#p3').setAttribute('aria-disabled', 'false');
+  alvo.innerHTML = '<p class="vazio">Buscando horários livres…</p>';
+  const t = ++tokenHor;
+  try {
+    const { horarios } = await apiGet({ acao: 'horarios', data: estado.data, servico: estado.servico });
+    if (t !== tokenHor) return;
+    renderHorarios(horarios);
+  } catch (e) {
+    if (t === tokenHor) alvo.innerHTML = '<p class="vazio">Não foi possível buscar os horários. Toque no dia de novo.</p>';
+  }
+}
+
+function renderHorarios(lista) {
+  const alvo = $('#horarios');
+  if (!lista.length) { alvo.innerHTML = '<p class="vazio">Esse dia lotou para este serviço. Escolha outro dia no calendário.</p>'; return; }
+  const dur = servicoAtual().duracao;
+  const periodos = [['Manhã', 0, 720], ['Tarde', 720, 1080], ['Noite', 1080, 1440]];
+  alvo.innerHTML = periodos.map(([nome, de, ate]) => {
+    const hs = lista.filter(h => toMin(h) >= de && toMin(h) < ate);
+    if (!hs.length) return '';
+    return `<div class="periodo"><h3>${nome}</h3><div class="horarios">${hs.map(h =>
+      `<button type="button" class="horario" aria-pressed="false" data-h="${h}" aria-label="Das ${h} às ${fimDe(h, dur)}">${h}</button>`
+    ).join('')}</div></div>`;
+  }).join('');
+}
+
+$('#horarios').onclick = e => {
+  const b = e.target.closest('.horario');
+  if (!b) return;
+  document.querySelectorAll('.horario').forEach(x => x.setAttribute('aria-pressed', x === b));
+  estado.hora = b.dataset.h;
+  atualizarResumo();
+};
+
+/* ---------- Resumo ---------- */
+function atualizarResumo() {
+  const s = servicoAtual();
+  $('#r-servico').textContent = s ? s.nome : '—';
+  $('#r-duracao').textContent = s ? duracaoTxt(s.duracao) : '—';
+  $('#r-valor').textContent = s ? precoTxt(s.preco) : '—';
+  $('#r-dia').textContent = estado.data ? capital(dataLonga(estado.data)) : '—';
+  $('#r-hora').textContent = s && estado.hora ? `${estado.hora} às ${fimDe(estado.hora, s.duracao)}` : '—';
+  const completo = !!(s && estado.data && estado.hora);
+  $('#dados').disabled = !completo;
+  $('#dica-dados').hidden = completo;
+  $('#barra-movel').hidden = !completo;
+  if (completo) {
+    $('#bm-valor').textContent = precoTxt(s.preco);
+    const d = parseISO(estado.data);
+    $('#bm-info').textContent = `${s.nome}, ${NOMES_DIA[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1} às ${estado.hora}`;
+  }
+}
+
+$('#bm-continuar').onclick = () => { rolarPara($('#resumo-card')); setTimeout(() => $('#nome').focus({ preventScroll: true }), 400); };
+new IntersectionObserver(([e]) => $('#barra-movel').classList.toggle('oculta', e.isIntersecting), { threshold: .25 })
+  .observe($('#resumo-card'));
+
+/* ---------- Confirmar ---------- */
+$('#tel').addEventListener('input', e => { e.target.value = mascaraTel(e.target.value); });
+
+$('#form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const msg = $('#msg');
+  msg.textContent = '';
+  const nome = $('#nome').value.trim();
+  const tel = $('#tel').value.replace(/\D/g, '');
+  if (nome.length < 2) { msg.textContent = 'Informe seu nome.'; $('#nome').focus(); return; }
+  if (tel.length < 10) { msg.textContent = 'Informe o WhatsApp com DDD.'; $('#tel').focus(); return; }
+
+  const botao = $('#confirmar');
+  botao.disabled = true;
+  botao.textContent = 'Agendando…';
+  try {
+    const r = await apiPost({
+      acao: 'agendar', servico: estado.servico, data: estado.data, hora: estado.hora,
+      nome, telefone: tel, obs: $('#obs').value.trim()
+    });
+    mostrarSucesso(r, nome);
+  } catch (err) {
+    msg.textContent = err.message;
+    if (/ocupado/i.test(err.message)) { carregarDisponibilidade(); rolarPara($('#p3')); }
+  } finally {
+    botao.disabled = false;
+    botao.textContent = 'Confirmar agendamento';
+  }
+});
+
+function mostrarSucesso(r, nome) {
+  const s = servicoAtual();
+  const dia = capital(dataLonga(r.data));
+  $('#s-saudacao').textContent = `Tudo certo, ${nome.split(' ')[0]}! Te esperamos no salão.`;
+  $('#s-servico').textContent = r.servico;
+  $('#s-dia').textContent = dia;
+  $('#s-hora').textContent = `${r.inicio} às ${r.fim}`;
+  $('#s-valor').textContent = precoTxt(s.preco);
+
+  if (AGENDA_CONFIG.WHATSAPP) {
+    const texto = `Oi! Sou ${nome} e acabei de agendar ${r.servico} para ${dia.toLowerCase()}, às ${r.inicio}.`;
+    $('#zap').href = 'https://wa.me/' + AGENDA_CONFIG.WHATSAPP + '?text=' + encodeURIComponent(texto);
+  } else {
+    $('#zap').hidden = true;
+  }
+  const f = (d, h) => d.replace(/-/g, '') + 'T' + h.replace(':', '') + '00';
+  $('#gagenda').href = 'https://calendar.google.com/calendar/render?' + new URLSearchParams({
+    action: 'TEMPLATE',
+    text: `${r.servico} | ${AGENDA_CONFIG.NOME_SALAO}`,
+    dates: f(r.data, r.inicio) + '/' + f(r.data, r.fim),
+    ctz: 'America/Sao_Paulo',
+    details: 'Agendado pelo site do salão.',
+    location: AGENDA_CONFIG.ENDERECO || ''
+  });
+
+  $('#fluxo').hidden = true;
+  $('#barra-movel').hidden = true;
+  $('#sucesso').hidden = false;
+  rolarPara(document.body);
+}
+
+iniciar();
+</script>
+</body>
+</html>

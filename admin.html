@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Painel | Unhas de Gel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=Gloock&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    h1 { font-size: clamp(2rem, 6vw, 2.6rem); }
+    .barra { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-top: 24px; }
+    .barra > div { flex: 1 1 140px; }
+    .barra label { margin-top: 0; }
+    .barra .btn { width: auto; margin: 0; padding: 12px 18px; }
+    .navs { display: flex; gap: 8px; }
+    .resumo { color: var(--muted); margin: 18px 0 0; }
+    .dia-grupo h3 {
+      font-family: 'Gloock', Georgia, serif; font-weight: 400; font-size: 1.35rem;
+      margin: 34px 0 10px; padding-bottom: 6px; border-bottom: 1.5px solid var(--line);
+      text-transform: capitalize;
+    }
+    .item {
+      display: grid; grid-template-columns: 92px 1fr auto; gap: 4px 16px; align-items: start;
+      padding: 14px 0; border-bottom: 1px solid var(--line);
+    }
+    .item .hora { font-weight: 600; font-size: 1.05rem; }
+    .item .hora small { display: block; font-weight: 400; color: var(--muted); font-size: .85rem; }
+    .item .quem b { font-weight: 600; }
+    .item .quem div { color: var(--muted); font-size: .92rem; }
+    .item .quem a { color: var(--berry); }
+    .item .obs { font-style: italic; }
+    .chip { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .8rem; font-weight: 600; border: 1.5px solid currentColor; }
+    .chip.confirmado { color: var(--berry); }
+    .chip.concluido { color: var(--ok); }
+    .chip.faltou { color: var(--danger); }
+    .chip.cancelado, .chip.bloqueado { color: var(--muted); }
+    .item.cancelado .quem, .item.cancelado .hora { text-decoration: line-through; opacity: .6; }
+    .acoes { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+    .acoes button {
+      padding: 6px 12px; border-radius: 999px; font: 500 .85rem 'Figtree', system-ui, sans-serif;
+      background: transparent; color: var(--ink); border: 1.5px solid var(--line); cursor: pointer;
+    }
+    .acoes button:hover { border-color: var(--berry); }
+    details { margin-top: 28px; border: 1.5px solid var(--line); border-radius: 14px; padding: 4px 18px 18px; background: var(--surface); }
+    summary { cursor: pointer; font-weight: 600; padding: 12px 0 0; }
+    .grade2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+    @media (max-width: 600px) {
+      .item { grid-template-columns: 74px 1fr; }
+      .acoes { grid-column: 1 / -1; justify-content: flex-start; }
+      .grade2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<main class="wrap largo">
+  <div class="cartela" aria-hidden="true">
+    <span style="background:#9C1F5E"></span><span style="background:#E58FB4"></span><span style="background:#F6D3E0"></span><span style="background:#C9A27E"></span><span style="background:#2B1631"></span>
+  </div>
+  <h1 id="titulo">Agenda do salão</h1>
+
+  <form id="login" style="max-width:360px">
+    <label for="senha">Senha do painel</label>
+    <input id="senha" type="password" autocomplete="current-password" required>
+    <button class="btn" type="submit">Entrar</button>
+    <div id="msg-login" class="aviso erro" role="alert"></div>
+  </form>
+
+  <div id="painel" hidden>
+    <div class="barra">
+      <div><label for="de">De</label><input id="de" type="date"></div>
+      <div><label for="ate">Até</label><input id="ate" type="date"></div>
+      <div class="navs">
+        <button class="btn sec" type="button" id="hoje">Hoje</button>
+        <button class="btn sec" type="button" id="semana">7 dias</button>
+        <button class="btn" type="button" id="atualizar">Atualizar</button>
+      </div>
+    </div>
+    <p class="resumo" id="resumo"></p>
+    <div id="lista"></div>
+
+    <details id="novo">
+      <summary>Novo agendamento ou bloqueio de horário</summary>
+      <form id="form-novo" novalidate>
+        <div class="grade2">
+          <div><label for="n-servico">Serviço</label><select id="n-servico"></select></div>
+          <div id="campo-duracao" hidden><label for="n-duracao">Duração (min)</label><input id="n-duracao" type="number" min="15" step="15" value="60"></div>
+          <div><label for="n-data">Data</label><input id="n-data" type="date" required></div>
+          <div><label for="n-hora">Horário</label><input id="n-hora" type="time" step="900" required></div>
+          <div><label for="n-nome">Nome</label><input id="n-nome" maxlength="80"></div>
+          <div><label for="n-tel">WhatsApp</label><input id="n-tel" type="tel" inputmode="tel"></div>
+        </div>
+        <label for="n-obs">Observação</label>
+        <input id="n-obs" maxlength="300">
+        <button class="btn" type="submit" id="n-salvar" style="width:auto">Salvar na agenda</button>
+        <div id="msg-novo" class="aviso" role="status"></div>
+      </form>
+    </details>
+
+    <button class="btn sec" type="button" id="sair" style="width:auto;margin-top:28px">Sair do painel</button>
+  </div>
+</main>
+
+<script src="config.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+let senha = sessionStorage.getItem('agenda_senha') || '';
+let servicos = [];
+
+const ROTULO = { confirmado: 'Confirmado', concluido: 'Concluído', cancelado: 'Cancelado', faltou: 'Faltou', bloqueado: 'Bloqueado' };
+const hojeISO = () => paraISO(new Date());
+const somar = (iso, n) => { const d = parseISO(iso); d.setDate(d.getDate() + n); return paraISO(d); };
+
+$('#titulo').textContent = 'Agenda | ' + AGENDA_CONFIG.NOME_SALAO;
+
+$('#login').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('#msg-login').textContent = '';
+  if (!apiConfigurada()) { $('#msg-login').textContent = 'Preencha API_URL no arquivo config.js.'; return; }
+  try {
+    await apiPost({ acao: 'admin_login', senha: $('#senha').value });
+    senha = $('#senha').value;
+    sessionStorage.setItem('agenda_senha', senha);
+    abrirPainel();
+  } catch (err) {
+    $('#msg-login').textContent = err.message;
+  }
+});
+
+$('#sair').onclick = () => { sessionStorage.removeItem('agenda_senha'); location.reload(); };
+
+async function abrirPainel() {
+  $('#login').hidden = true;
+  $('#painel').hidden = false;
+  $('#de').value = hojeISO();
+  $('#ate').value = somar(hojeISO(), 6);
+  $('#n-data').value = hojeISO();
+  try {
+    servicos = (await apiGet({ acao: 'config' })).config.servicos;
+  } catch (e) { servicos = []; }
+  $('#n-servico').innerHTML = servicos.map(s => `<option value="${esc(s.id)}">${esc(s.nome)} (${duracaoTxt(s.duracao)})</option>`).join('')
+    + '<option value="bloqueio">Bloquear horário (folga, compromisso)</option>';
+  carregar();
+}
+
+$('#hoje').onclick = () => { $('#de').value = $('#ate').value = hojeISO(); carregar(); };
+$('#semana').onclick = () => { $('#de').value = hojeISO(); $('#ate').value = somar(hojeISO(), 6); carregar(); };
+$('#atualizar').onclick = carregar;
+
+async function carregar() {
+  const lista = $('#lista');
+  lista.innerHTML = '<p class="vazio" style="margin-top:20px">Carregando…</p>';
+  try {
+    const { itens } = await apiPost({ acao: 'admin_listar', senha, de: $('#de').value, ate: $('#ate').value });
+    render(itens);
+  } catch (err) {
+    if (/senha/i.test(err.message)) { sessionStorage.removeItem('agenda_senha'); location.reload(); return; }
+    lista.innerHTML = `<p class="aviso erro">${esc(err.message)}</p>`;
+  }
+}
+
+function render(itens) {
+  const ativos = itens.filter(i => i.status === 'confirmado').length;
+  const feitos = itens.filter(i => i.status === 'concluido').length;
+  $('#resumo').textContent = itens.length
+    ? `${ativos} confirmado(s) e ${feitos} concluído(s) no período.`
+    : '';
+  if (!itens.length) {
+    $('#lista').innerHTML = '<p class="vazio" style="margin-top:20px">Nenhum agendamento nesse período. Use o formulário abaixo para marcar um horário.</p>';
+    return;
+  }
+  const grupos = {};
+  itens.forEach(i => (grupos[i.data] = grupos[i.data] || []).push(i));
+  $('#lista').innerHTML = Object.keys(grupos).map(data => `
+    <section class="dia-grupo">
+      <h3>${dataLonga(data)}</h3>
+      ${grupos[data].map(itemHTML).join('')}
+    </section>`).join('');
+}
+
+function itemHTML(i) {
+  const tel = i.telefone.replace(/\D/g, '');
+  const zap = tel ? `<a href="https://wa.me/55${tel}" target="_blank" rel="noopener">${esc(mascaraTel(tel))}</a>` : '';
+  const botoes = i.status === 'bloqueado'
+    ? `<button data-id="${esc(i.id)}" data-st="cancelado">Liberar horário</button>`
+    : i.status === 'confirmado'
+      ? `<button data-id="${esc(i.id)}" data-st="concluido">Concluído</button>
+         <button data-id="${esc(i.id)}" data-st="faltou">Faltou</button>
+         <button data-id="${esc(i.id)}" data-st="cancelado">Cancelar</button>`
+      : `<button data-id="${esc(i.id)}" data-st="confirmado">Voltar para confirmado</button>`;
+  return `
+    <div class="item ${esc(i.status)}">
+      <div class="hora">${esc(i.inicio)}<small>até ${esc(i.fim)}</small></div>
+      <div class="quem">
+        <b>${esc(i.nome)}</b> <span class="chip ${esc(i.status)}">${ROTULO[i.status] || esc(i.status)}</span>
+        <div>${esc(i.servico)}${zap ? ' | ' + zap : ''}</div>
+        ${i.obs ? `<div class="obs">${esc(i.obs)}</div>` : ''}
+      </div>
+      <div class="acoes">${botoes}</div>
+    </div>`;
+}
+
+$('#lista').addEventListener('click', async e => {
+  const b = e.target.closest('button[data-st]');
+  if (!b) return;
+  if (b.dataset.st === 'cancelado' && !confirm('Cancelar este horário? Ele volta a ficar livre para as clientes.')) return;
+  b.disabled = true;
+  try {
+    await apiPost({ acao: 'admin_status', senha, id: b.dataset.id, status: b.dataset.st });
+    carregar();
+  } catch (err) {
+    alert(err.message);
+    b.disabled = false;
+  }
+});
+
+$('#n-servico').addEventListener('change', e => { $('#campo-duracao').hidden = e.target.value !== 'bloqueio'; });
+$('#n-tel').addEventListener('input', e => { e.target.value = mascaraTel(e.target.value); });
+
+$('#form-novo').addEventListener('submit', async e => {
+  e.preventDefault();
+  const msg = $('#msg-novo');
+  msg.className = 'aviso';
+  msg.textContent = '';
+  const botao = $('#n-salvar');
+  botao.disabled = true;
+  try {
+    await apiPost({
+      acao: 'admin_agendar', senha,
+      servico: $('#n-servico').value, duracao: $('#n-duracao').value,
+      data: $('#n-data').value, hora: $('#n-hora').value,
+      nome: $('#n-nome').value, telefone: $('#n-tel').value, obs: $('#n-obs').value
+    });
+    msg.textContent = 'Salvo na agenda.';
+    ['#n-nome', '#n-tel', '#n-obs', '#n-hora'].forEach(s => $(s).value = '');
+    carregar();
+  } catch (err) {
+    msg.className = 'aviso erro';
+    msg.textContent = err.message;
+  } finally {
+    botao.disabled = false;
+  }
+});
+
+if (senha && apiConfigurada()) abrirPainel();
+</script>
+</body>
+</html>
